@@ -1,0 +1,53 @@
+// This tells Prisma to generate a Javascript client we can use in our server
+generator client {
+  provider = "prisma-client-js"
+}
+
+// This tells Prisma we are connecting to a PostgreSQL database
+datasource db {
+  provider = "postgresql"
+}
+
+// 1. The Users Table (Saves their Google Login)
+model User {
+  id           String          @id @default(uuid())
+  googleId     String          @unique
+  email        String          @unique
+  displayName  String?
+  accessToken  String?
+  refreshToken String?
+  createdAt    DateTime        @default(now())
+  
+  // A user can have many intent clusters
+  clusters     IntentCluster[] 
+}
+
+// 2. The Intent Clusters Table (The AI's Output)
+model IntentCluster {
+  id             String    @id @default(uuid())
+  userId         String
+  clusterName    String    // e.g., "Fleet Software Pricing"
+  winningUrl     String?   // The canonical URL to keep
+  recommendedFix String?   // e.g., "301 Redirect to Winning URL"
+  createdAt      DateTime  @default(now())
+
+  // Links back to the User who owns this data
+  user           User      @relation(fields: [userId], references: [id])
+  
+  // A cluster contains many keywords
+  keywords       Keyword[] 
+}
+
+// 3. The Keywords Table (The Raw GSC Data)
+model Keyword {
+  id          String        @id @default(uuid())
+  clusterId   String
+  query       String        // e.g., "how much is fleet gps"
+  url         String        // The page ranking for it
+  clicks      Int           @default(0)
+  impressions Int           @default(0)
+  position    Float         @default(0.0)
+
+  // Links back to the Cluster it belongs to
+  cluster     IntentCluster @relation(fields: [clusterId], references: [id])
+}

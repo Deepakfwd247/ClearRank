@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClearRank | Fix Keyword Cannibalization</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        indigo: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid white;
+            width: 20px;
+            height: 20px;
+            -webkit-animation: spin 1s linear infinite;
+            animation: spin 1s linear infinite;
+        }
+
+        .spinner-dark {
+            border: 3px solid rgba(79, 70, 229, 0.2);
+            border-top: 3px solid #4f46e5;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-50 text-slate-900 font-sans antialiased selection:bg-indigo-100 selection:text-indigo-900">
+
+    <header class="fixed top-0 w-full bg-slate-50/90 backdrop-blur-md z-50 border-b border-slate-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex-shrink-0 flex items-center">
+                    <a href="#" class="text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+                        <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                        </svg>
+                        ClearRank
+                    </a>
+                </div>
+                <nav class="hidden md:flex space-x-8">
+                    <a href="#features"
+                        class="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">Features</a>
+                    <a href="#demo"
+                        class="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">Demo</a>
+                    <a href="#pricing"
+                        class="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">Pricing</a>
+                </nav>
+                <div class="flex items-center">
+                    <a href="/api/auth/google"
+                        class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm sm:text-base font-medium hover:bg-indigo-700 transition shadow-sm whitespace-nowrap">
+                        Connect GSC
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="pt-16">
+        <section class="relative pt-20 pb-16 md:pt-32 md:pb-24 overflow-hidden">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                <div
+                    class="inline-flex items-center rounded-full px-3 py-1 text-sm font-medium text-indigo-600 bg-indigo-50 ring-1 ring-inset ring-indigo-500/20 mb-8">
+                    Stop competing with yourself
+                </div>
+                <h1
+                    class="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 mb-6 max-w-4xl mx-auto leading-tight">
+                    Fix Keyword Cannibalization <br class="hidden md:block" /> Before It Ruins Your Rankings.
+                </h1>
+                <p class="mt-4 text-lg md:text-xl text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed">
+                    Connect Google Search Console. We use AI to cluster your URLs by human search intent, instantly
+                    flagging pages that are fighting for the exact same traffic.
+                </p>
+                <div class="flex flex-col sm:flex-row justify-center items-center gap-4">
+                    <a href="/checkout"
+                        class="w-full sm:w-auto flex items-center justify-center px-8 py-3.5 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-all focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600">
+                        Start Free Trial
+                    </a>
+                    <a href="#demo"
+                        class="w-full sm:w-auto flex items-center justify-center px-8 py-3.5 border border-slate-300 text-base font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 shadow-sm transition-all focus:ring-2 focus:ring-offset-2 focus:ring-slate-200">
+                        View Live Demo
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <section id="demo" class="py-16 bg-slate-900 border-y border-slate-800 relative">
+            <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center mb-10">
+                    <h2 class="text-sm font-bold tracking-wide text-indigo-400 uppercase">Live Sandbox</h2>
+                    <p class="mt-2 text-3xl font-bold tracking-tight text-white">Paste your keywords. See the magic.</p>
+                    <p class="mt-4 text-slate-400 max-w-2xl mx-auto">Drop in a list of keywords you currently rank for.
+                        We'll simulate the traffic data, run it through our AI, and find the hidden overlaps.</p>
+                </div>
+
+                <div class="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 p-1 sm:p-2 relative z-10">
+                    <div class="bg-white rounded-lg p-6 sm:p-8">
+                        <div class="flex flex-col gap-4">
+                            <textarea id="keyword-input" rows="6"
+                                class="block w-full p-4 border border-slate-300 rounded-md leading-relaxed bg-slate-50 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors resize-none font-mono"
+                                placeholder="Paste your keywords here (one per line)...&#10;&#10;e.g.&#10;fleet tracking software&#10;gps for trucks&#10;best small business crm&#10;crm software guide"></textarea>
+
+                            <button id="check-intent-btn"
+                                class="w-full sm:w-auto self-end bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-md shadow-sm transition-colors flex items-center justify-center">
+                                <span id="btn-text">Run Free AI Audit</span>
+                                <div id="btn-spinner" class="spinner hidden ml-2"></div>
+                            </button>
+                        </div>
+
+                        <div id="demo-result" class="mt-8 hidden">
+                            <div id="loading-state"
+                                class="flex flex-col items-center justify-center py-12 text-slate-500 space-y-4">
+                                <div class="spinner spinner-dark w-10 h-10"></div>
+                                <p class="text-sm font-medium animate-pulse">Gemini 2.5 is clustering search intent...
+                                </p>
+                            </div>
+
+                            <div id="results-state" class="hidden">
+                                <h3 class="text-lg font-bold text-slate-900 mb-4">Cannibalization Report</h3>
+                                <div class="border border-slate-200 rounded-lg overflow-hidden relative">
+                                    <table class="min-w-full divide-y divide-slate-200 text-left">
+                                        <thead class="bg-slate-50">
+                                            <tr>
+                                                <th scope="col"
+                                                    class="px-6 py-3 text-xs font-semibold text-slate-500 uppercase">
+                                                    Intent Cluster</th>
+                                                <th scope="col"
+                                                    class="px-6 py-3 text-xs font-semibold text-slate-500 uppercase">
+                                                    Simulated URLs</th>
+                                                <th scope="col"
+                                                    class="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase">
+                                                    Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="demo-table-body" class="bg-white divide-y divide-slate-200 relative">
+                                        </tbody>
+                                    </table>
+
+                                    <div id="paywall-overlay"
+                                        class="hidden absolute bottom-0 left-0 w-full h-[75%] bg-gradient-to-t from-white via-white/90 to-transparent flex flex-col items-center justify-end pb-6 z-20">
+                                        <div
+                                            class="bg-slate-900 text-white px-8 py-6 rounded-xl shadow-2xl text-center border border-slate-700 transform translate-y-2">
+                                            <svg class="w-10 h-10 mx-auto text-indigo-400 mb-3" fill="none"
+                                                stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
+                                                </path>
+                                            </svg>
+                                            <h4 class="font-bold text-xl mb-2" id="hidden-count-text">Multiple Conflicts
+                                                Hidden</h4>
+                                            <p class="text-sm text-slate-300 mb-6 max-w-xs mx-auto">Connect your Search
+                                                Console to view all cannibalizing URLs and get exact 301 redirect paths.
+                                            </p>
+                                            <a href="/checkout"
+                                                class="inline-block bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-8 rounded-lg transition-colors w-full shadow-lg">
+                                                Unlock Full Report &rarr;
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="py-16 md:py-24 bg-slate-50">
+            <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                <h2 class="text-2xl md:text-3xl font-bold text-slate-900 mb-6">Escape Spreadsheet Purgatory.</h2>
+                <div class="bg-white p-8 rounded-xl shadow-sm border border-slate-200">
+                    <p class="text-lg text-slate-600 leading-relaxed md:px-8">
+                        Manually exporting 50,000 rows of Google Search Console data, tossing it into Excel, and trying
+                        to spot keyword overlap by eye is completely unsustainable. You are guessing, and it's costing
+                        you traffic. ClearRank does this automatically in minutes, not days.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section id="features" class="py-16 md:py-24 bg-white border-t border-slate-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center max-w-3xl mx-auto mb-16">
+                    <h2 class="text-sm font-bold tracking-wide text-indigo-600 uppercase">Enterprise Features</h2>
+                    <p class="mt-2 text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">Everything you need to
+                        consolidate content.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div class="bg-slate-50 rounded-xl p-8 border border-slate-200 transition-shadow hover:shadow-md">
+                        <div class="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mb-6">
+                            <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10">
+                                </path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-slate-900 mb-3">Automated Intent Clustering</h3>
+                        <p class="text-slate-600">Our proprietary LLM understands human search intent. It groups URLs by
+                            meaning—not just matching text strings—finding overlaps traditional tools miss.</p>
+                    </div>
+
+                    <div class="bg-slate-50 rounded-xl p-8 border border-slate-200 transition-shadow hover:shadow-md">
+                        <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mb-6">
+                            <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                                </path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-slate-900 mb-3">Cannibalization Alerts</h3>
+                        <p class="text-slate-600">Get instant visual flags for overlapping URLs that are diluting your
+                            PageRank. Sort conflicts by severity and potential traffic gain.</p>
+                    </div>
+
+                    <div class="bg-slate-50 rounded-xl p-8 border border-slate-200 transition-shadow hover:shadow-md">
+                        <div class="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center mb-6">
+                            <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+                                </path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-slate-900 mb-3">Spreadsheet-Free Triage</h3>
+                        <p class="text-slate-600">A clean, opinionated dashboard designed explicitly for deciding what
+                            to merge, what to delete, and what to 301 redirect.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="py-16 md:py-24 bg-slate-900 text-white border-y border-slate-800">
+            <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex flex-col md:flex-row items-center gap-12">
+                    <div class="md:w-1/2">
+                        <h2 class="text-sm font-bold tracking-wide text-indigo-400 uppercase mb-2">Under the Hood</h2>
+                        <h3 class="text-3xl md:text-4xl font-bold tracking-tight mb-6">Built for Enterprise Security.
+                        </h3>
+                        <p class="text-slate-300 text-lg mb-6 leading-relaxed">
+                            We don't crawl your site or store PII. ClearRank operates entirely via secure, read-only
+                            Google Search Console API access.
+                        </p>
+                        <ul class="space-y-4">
+                            <li class="flex items-start">
+                                <svg class="h-6 w-6 text-indigo-400 mt-0.5 mr-3" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.965 11.965 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                </svg>
+                                <span class="text-slate-300">Read-only GSC API integration</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="h-6 w-6 text-indigo-400 mt-0.5 mr-3" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                </svg>
+                                <span class="text-slate-300">Transparent LLM intent grouping</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="h-6 w-6 text-indigo-400 mt-0.5 mr-3" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                                <span class="text-slate-300">Zero performance impact on your actual website</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div
+                        class="md:w-1/2 bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-2xl overflow-hidden w-full">
+                        <div class="flex items-center gap-2 mb-4 border-b border-slate-700 pb-4">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                            <div class="ml-2 text-xs font-mono text-slate-400">api_request.log</div>
+                        </div>
+                        <pre class="text-sm font-mono text-indigo-300 overflow-x-auto"><code>GET /v1/searchconsole/data
+Host: www.googleapis.com
+Authorization: Bearer [REDACTED]
+
+{
+  "startDate": "2023-01-01",
+  "endDate": "2023-12-31",
+  "dimensions": ["query", "page"],
+  "rowLimit": 25000
+}
+
+<span class="text-emerald-400">200 OK</span>
+<span class="text-slate-500">// Sending to intent clustering engine...</span></code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="pricing" class="py-16 md:py-24 bg-slate-50 border-y border-slate-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center max-w-3xl mx-auto mb-16">
+                    <h2 class="text-sm font-bold tracking-wide text-indigo-600 uppercase">Pricing</h2>
+                    <p class="mt-2 text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">Start fixing your
+                        rankings today.</p>
+                    <p class="mt-4 text-lg text-slate-600">No complex credit systems. Just straightforward pricing for
+                        serious SEO professionals.</p>
+                </div>
+
+                <div
+                    class="mx-auto max-w-2xl rounded-3xl ring-1 ring-slate-200 bg-white sm:mt-12 lg:mx-0 lg:flex lg:max-w-none shadow-xl overflow-hidden">
+                    <div class="p-8 sm:p-10 lg:flex-auto">
+                        <h3 class="text-2xl font-bold tracking-tight text-slate-900">Pro Plan</h3>
+                        <p class="mt-6 text-base leading-7 text-slate-600">Everything you need to audit, triage, and
+                            resolve keyword cannibalization across your entire Google Search Console property
+                            automatically.</p>
+                        <div class="mt-10 flex items-center gap-x-4">
+                            <h4 class="flex-none text-sm font-semibold leading-6 text-indigo-600">What's included</h4>
+                            <div class="h-px flex-auto bg-slate-100"></div>
+                        </div>
+                        <ul role="list"
+                            class="mt-8 grid grid-cols-1 gap-4 text-sm leading-6 text-slate-600 sm:grid-cols-2 sm:gap-6">
+                            <li class="flex gap-x-3">
+                                <svg class="h-6 w-5 flex-none text-indigo-600" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd"
+                                        d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                                Unlimited GSC API connection
+                            </li>
+                            <li class="flex gap-x-3">
+                                <svg class="h-6 w-5 flex-none text-indigo-600" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd"
+                                        d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                                Advanced AI intent clustering
+                            </li>
+                            <li class="flex gap-x-3">
+                                <svg class="h-6 w-5 flex-none text-indigo-600" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd"
+                                        d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                                Automated Winner vs Loser logic
+                            </li>
+                            <li class="flex gap-x-3">
+                                <svg class="h-6 w-5 flex-none text-indigo-600" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd"
+                                        d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                                Actionable 301 redirect paths
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="-mt-2 p-2 lg:mt-0 lg:w-full lg:max-w-md lg:flex-shrink-0">
+                        <div
+                            class="rounded-2xl bg-slate-50 py-10 text-center ring-1 ring-inset ring-slate-900/5 lg:flex lg:flex-col lg:justify-center lg:py-16 h-full">
+                            <div class="mx-auto max-w-xs px-8">
+                                <p class="text-base font-semibold text-slate-600">Cancel anytime</p>
+                                <p class="mt-6 flex items-baseline justify-center gap-x-2">
+                                    <span class="text-5xl font-bold tracking-tight text-slate-900">$49</span>
+                                    <span
+                                        class="text-sm font-semibold leading-6 tracking-wide text-slate-600">/mo</span>
+                                </p>
+                                <a href="/checkout"
+                                    class="mt-10 block w-full rounded-md bg-indigo-600 px-3 py-3 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition">Start
+                                    Free Trial</a>
+                                <p class="mt-6 text-xs leading-5 text-slate-500">Includes a 7-day risk-free trial.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-slate-900 border-t border-slate-800 py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-6">
+                <div class="flex flex-col md:flex-row items-center">
+                    <span class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                        </svg>
+                        ClearRank
+                    </span>
+                    <span
+                        class="mt-4 md:mt-0 md:ml-4 text-sm text-slate-400 md:border-l md:border-slate-700 md:pl-4">&copy;
+                        2026 ClearRank Inc. All rights reserved.</span>
+                </div>
+
+                <div class="flex items-center space-x-6 text-sm">
+                    <a href="#" class="text-slate-400 hover:text-white transition-colors">Terms of Service</a>
+                    <a href="#" class="text-slate-400 hover:text-white transition-colors">Privacy Policy</a>
+                    <a href="mailto:support@clearrank.com"
+                        class="text-slate-400 hover:text-white transition-colors">Contact Support</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const checkBtn = document.getElementById('check-intent-btn');
+            const btnText = document.getElementById('btn-text');
+            const btnSpinner = document.getElementById('btn-spinner');
+            const demoResult = document.getElementById('demo-result');
+            const loadingState = document.getElementById('loading-state');
+            const resultsState = document.getElementById('results-state');
+            const tableBody = document.getElementById('demo-table-body');
+            const paywallOverlay = document.getElementById('paywall-overlay');
+            const inputField = document.getElementById('keyword-input');
+
+            // ==========================================
+            // SMART BUTTON LOGIC (Session Checking)
+            // ==========================================
+            async function checkLoginStatus() {
+                try {
+                    const response = await fetch('/api/auth/status');
+                    const data = await response.json();
+
+                    if (data.loggedIn) {
+                        // Find every login button on the page and magically switch it to a Dashboard link
+                        const authButtons = document.querySelectorAll('a[href="/api/auth/google"], a[href="/checkout"]');
+                        authButtons.forEach(btn => {
+                            btn.href = '/dashboard.html';
+                            btn.innerText = 'Go to Dashboard \u2192'; // Adds a nice arrow
+                            btn.classList.replace('bg-indigo-600', 'bg-emerald-600'); // Optional: Turn it green!
+                            btn.classList.replace('hover:bg-indigo-700', 'hover:bg-emerald-700');
+                        });
+                    }
+                } catch (error) {
+                    console.error("Could not verify auth status.");
+                }
+            }
+
+            // Run the check instantly on page load
+            checkLoginStatus();
+
+            checkBtn.addEventListener('click', async () => {
+                const text = inputField.value.trim();
+                if (!text) {
+                    inputField.focus();
+                    inputField.classList.add('border-red-300', 'ring-1', 'ring-red-300');
+                    setTimeout(() => inputField.classList.remove('border-red-300', 'ring-1', 'ring-red-300'), 1500);
+                    return;
+                }
+
+                // Reset UI States
+                demoResult.classList.remove('hidden');
+                loadingState.classList.remove('hidden');
+                resultsState.classList.add('hidden');
+                paywallOverlay.classList.add('hidden');
+                tableBody.innerHTML = '';
+
+                // Lock Button
+                checkBtn.disabled = true;
+                checkBtn.classList.add('opacity-90', 'cursor-not-allowed');
+                btnText.textContent = 'Auditing...';
+                btnSpinner.classList.remove('hidden');
+                btnSpinner.classList.add('inline-block');
+
+                try {
+                    // Send pasted text to the public Sandbox route
+                    const response = await fetch('/api/demo-analyze', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text: text })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.status === 'success') {
+                        const clusters = result.data;
+
+                        if (!clusters || clusters.length === 0) {
+                            tableBody.innerHTML = `<tr><td colspan="3" class="px-6 py-8 text-center text-slate-500">No overlap detected in these keywords!</td></tr>`;
+                        } else {
+                            // Build the rows
+                            clusters.forEach((cluster, index) => {
+                                // If it is not the very first result, we blur it to censor the data
+                                const isCensored = index > 0;
+                                const blurClass = isCensored ? 'blur-[6px] opacity-40 select-none pointer-events-none' : '';
+
+                                const losingUrlsHtml = cluster.losing_urls.map(url => `
+                                    <div class="flex items-center gap-2 mt-2">
+                                        <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                                        <span class="text-sm font-mono text-rose-700 truncate">${url}</span>
+                                    </div>
+                                `).join('');
+
+                                const rowHTML = `
+                                    <tr class="${blurClass} transition-all duration-300">
+                                        <td class="px-6 py-5 align-top">
+                                            <div class="text-sm font-bold text-slate-900">${cluster.intent_name}</div>
+                                            <div class="text-xs text-slate-500 mt-1">Simulated Volume: ${cluster.total_search_volume.toLocaleString()}</div>
+                                        </td>
+                                        <td class="px-6 py-5 align-top">
+                                            <div class="space-y-1">
+                                                <div class="flex items-center gap-2">
+                                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                                    <span class="text-sm font-mono text-emerald-700 font-bold truncate">${cluster.winning_url}</span>
+                                                    <span class="text-[10px] uppercase text-emerald-600 font-bold ml-2 border border-emerald-200 bg-emerald-50 px-2 py-0.5 rounded-full">Winner</span>
+                                                </div>
+                                                ${losingUrlsHtml}
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-5 align-top text-right">
+                                            <div class="inline-block px-4 py-2 border border-transparent text-white text-sm font-medium rounded-lg bg-slate-200 text-slate-500">
+                                                Resolve Conflict
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `;
+                                tableBody.insertAdjacentHTML('beforeend', rowHTML);
+                            });
+
+                            // Trigger the Lock Overlay if more than 1 conflict was found
+                            if (clusters.length > 1) {
+                                document.getElementById('hidden-count-text').innerText = `${clusters.length - 1} More Conflicts Hidden`;
+                                paywallOverlay.classList.remove('hidden');
+                            }
+                        }
+                    }
+                } catch (error) {
+                    tableBody.innerHTML = `<tr><td colspan="3" class="px-6 py-8 text-center text-rose-500">Failed to analyze data. Please try again.</td></tr>`;
+                } finally {
+                    // Show Table, Hide Loading
+                    loadingState.classList.add('hidden');
+                    resultsState.classList.remove('hidden');
+
+                    // Reset Button
+                    checkBtn.disabled = false;
+                    checkBtn.classList.remove('opacity-90', 'cursor-not-allowed');
+                    btnText.textContent = 'Run Free AI Audit';
+                    btnSpinner.classList.add('hidden');
+                    btnSpinner.classList.remove('inline-block');
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
