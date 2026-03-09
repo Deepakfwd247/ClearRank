@@ -1,6 +1,7 @@
 // This tells Prisma to generate a Javascript client we can use in our server
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"] // Required for your Neon database connection
 }
 
 // This tells Prisma we are connecting to a PostgreSQL database
@@ -17,6 +18,10 @@ model User {
   accessToken  String?
   refreshToken String?
   createdAt    DateTime        @default(now())
+  
+  // 🚨 NEW FIELDS FOR THE 7-DAY TRIAL LOGIC:
+  trialEndsAt  DateTime? 
+  isPro        Boolean         @default(false)
   
   // A user can have many intent clusters
   clusters     IntentCluster[] 

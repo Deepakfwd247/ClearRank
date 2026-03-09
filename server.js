@@ -33,7 +33,7 @@ const path = require('path');
 const session = require('express-session');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const { google } = require('googleapis'); // <-- ADDED: Google Official Library
+const { google } = require('googleapis');
 const { clusterKeywordsByIntent } = require('./services/intentEngine.js');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
@@ -77,7 +77,6 @@ passport.deserializeUser(async (id, done) => {
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    // ✅ NOW USING DYNAMIC BASE_URL
     callbackURL: `${BASE_URL}/api/auth/google/callback`
 },
     async function (accessToken, refreshToken, profile, done) {
@@ -105,7 +104,11 @@ passport.use(new GoogleStrategy({
                 });
                 console.log(`♻️ User updated in database: ${user.email}`);
             } else {
-                // If they don't exist, create a brand new row
+                // Set the trial timer to 7 days from right now
+                const trialExpiration = new Date();
+                trialExpiration.setDate(trialExpiration.getDate() + 7);
+
+                // If they don't exist, create a brand new row with the timer
                 user = await prisma.user.create({
                     data: {
                         googleId: googleIdStr,
@@ -113,9 +116,11 @@ passport.use(new GoogleStrategy({
                         displayName: nameStr,
                         accessToken: accessToken || null,
                         refreshToken: refreshToken || null,
+                        trialEndsAt: trialExpiration,
+                        isPro: false
                     }
                 });
-                console.log(`💾 New user saved to database: ${user.email}`);
+                console.log(`💾 New user saved. Trial ends: ${trialExpiration}`);
             }
 
             return done(null, user);
@@ -132,13 +137,37 @@ passport.use(new GoogleStrategy({
 // 4. API Routes
 // ==========================================
 
-// Middleware to check if a user is securely logged in
+// Middleware to check if a user is securely logged in (General)
 function isAuthenticated(req, res, next) {
     if (req.isAuthenticated()) {
         return next();
     }
-    // If not logged in, kick them out with a 401 error
     res.status(401).json({ error: 'You must be logged in to access this data.' });
+}
+
+// 🛑 Middleware to check if their trial is valid or if they paid
+function hasActiveAccess(req, res, next) {
+    if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: 'Please log in.' });
+    }
+
+    const user = req.user;
+    const now = new Date();
+
+    // 1. If they manually paid, let them in forever
+    if (user.isPro) return next();
+
+    // 2. If their 7-day trial is still active, let them in
+    if (user.trialEndsAt && new Date(user.trialEndsAt) > now) {
+        return next();
+    }
+
+    // 3. Trial expired! Kick them to the Stripe checkout
+    return res.status(403).json({
+        error: 'Trial Expired',
+        message: 'Your free trial has ended. Please upgrade to ClearRank Pro.',
+        redirectUrl: '/checkout'
+    });
 }
 
 /**
@@ -163,7 +192,6 @@ app.get('/api/auth/google',
 app.get('/api/auth/google/callback',
     passport.authenticate('google', { failureRedirect: '/' }),
     function (req, res) {
-        // req.user is now our database User object
         console.log(`✅ User ${req.user.displayName} successfully logged in!`);
         res.redirect('/dashboard.html');
     }
@@ -172,33 +200,29 @@ app.get('/api/auth/google/callback',
 /**
  * Route: GET /api/gsc/sites
  * Description: Fetches a list of all websites the logged-in user owns in GSC.
+ * 🔒 USES hasActiveAccess (Blocks expired users)
  */
-app.get('/api/gsc/sites', isAuthenticated, async (req, res) => {
+app.get('/api/gsc/sites', hasActiveAccess, async (req, res) => {
     try {
         console.log(`🌐 Fetching Search Console sites for: ${req.user.email}`);
 
-        // 1. Create a temporary Google client using your app's credentials
         const oauth2Client = new google.auth.OAuth2(
             process.env.GOOGLE_CLIENT_ID,
             process.env.GOOGLE_CLIENT_SECRET
         );
 
-        // 2. Load the user's specific access token from your database
         oauth2Client.setCredentials({ access_token: req.user.accessToken });
 
-        // 3. Initialize the Search Console API
         const searchConsole = google.webmasters({
             version: 'v3',
             auth: oauth2Client
         });
 
-        // 4. Ask Google for the list of websites
         const response = await searchConsole.sites.list();
 
-        // 5. Send the list back to the browser
         res.json({
             status: 'success',
-            sites: response.data.siteEntry || [] // Returns an empty array if they have no sites
+            sites: response.data.siteEntry || []
         });
 
     } catch (error) {
@@ -217,17 +241,15 @@ app.get('/checkout', async (req, res) => {
             payment_method_types: ['card'],
             line_items: [
                 {
-                    price: process.env.STRIPE_PRICE_ID, // Connects to your $49/mo product
+                    price: process.env.STRIPE_PRICE_ID,
                     quantity: 1,
                 },
             ],
             mode: 'subscription',
-            // ✅ NOW USING DYNAMIC BASE_URL
             success_url: `${BASE_URL}/api/auth/google`,
             cancel_url: `${BASE_URL}/`,
         });
 
-        // Send the user to the secure Stripe-hosted checkout page
         res.redirect(session.url);
     } catch (error) {
         console.error('❌ Stripe Error:', error.message);
@@ -238,8 +260,9 @@ app.get('/checkout', async (req, res) => {
 /**
  * Route: POST /api/analyze-intent
  * Description: Fetches REAL data from Google Search Console and sends it to Gemini.
+ * 🔒 USES hasActiveAccess (Blocks expired users)
  */
-app.post('/api/analyze-intent', isAuthenticated, async (req, res) => {
+app.post('/api/analyze-intent', hasActiveAccess, async (req, res) => {
     try {
         const { siteUrl } = req.body;
 
@@ -249,7 +272,6 @@ app.post('/api/analyze-intent', isAuthenticated, async (req, res) => {
 
         console.log(`🌐 Fetching live Search Console data for: ${siteUrl}`);
 
-        // 1. Authenticate with Google
         const oauth2Client = new google.auth.OAuth2(
             process.env.GOOGLE_CLIENT_ID,
             process.env.GOOGLE_CLIENT_SECRET
@@ -261,30 +283,27 @@ app.post('/api/analyze-intent', isAuthenticated, async (req, res) => {
             auth: oauth2Client
         });
 
-        // 2. Set the Date Range (Last 30 Days)
         const today = new Date();
         const thirtyDaysAgo = new Date(today.setDate(today.getDate() - 30));
         const startDate = thirtyDaysAgo.toISOString().split('T')[0];
         const endDate = new Date().toISOString().split('T')[0];
 
-        // 3. Ask Google for the exact URLs and Keywords
         const gscResponse = await searchConsole.searchanalytics.query({
             siteUrl: siteUrl,
             requestBody: {
                 startDate: startDate,
                 endDate: endDate,
-                dimensions: ['query', 'page'], // We need both the keyword and the URL it ranks for
-                rowLimit: 1000, // Limit to top 1000 rows to keep AI processing fast
+                dimensions: ['query', 'page'],
+                rowLimit: 1000,
             }
         });
 
         const rows = gscResponse.data.rows || [];
 
         if (rows.length === 0) {
-            return res.json({ status: 'success', data: [] }); // No data found in the last 30 days
+            return res.json({ status: 'success', data: [] });
         }
 
-        // 4. Format the raw Google data into a clean list for Gemini
         const formattedData = rows.map(row => ({
             query: row.keys[0],
             url: row.keys[1],
@@ -292,9 +311,8 @@ app.post('/api/analyze-intent', isAuthenticated, async (req, res) => {
             impressions: row.impressions
         }));
 
-        console.log(`🧠 Downloaded ${formattedData.length} live rows. Sending to Gemini 2.5 Flash...`);
+        console.log(`🧠 Downloaded ${formattedData.length} live rows. Sending to Gemini...`);
 
-        // 5. Send the real data to the AI Engine
         const clusters = await clusterKeywordsByIntent(formattedData);
 
         res.json({
@@ -310,8 +328,7 @@ app.post('/api/analyze-intent', isAuthenticated, async (req, res) => {
 
 /**
  * Route: POST /api/demo-analyze
- * Description: Public sandbox route. Takes raw keywords from the landing page, 
- * generates mock URLs/traffic to satisfy the AI schema, and returns the clusters.
+ * Description: Public sandbox route. Takes raw keywords from the landing page.
  */
 app.post('/api/demo-analyze', async (req, res) => {
     try {
@@ -320,7 +337,6 @@ app.post('/api/demo-analyze', async (req, res) => {
             return res.status(400).json({ status: 'error', message: 'No keywords provided.' });
         }
 
-        // Split the pasted text by lines and clean it up
         const keywords = text.split('\n').map(k => k.trim()).filter(k => k.length > 0);
 
         if (keywords.length === 0) {
@@ -329,7 +345,6 @@ app.post('/api/demo-analyze', async (req, res) => {
 
         console.log(`🚀 Running Public Demo for ${keywords.length} keywords...`);
 
-        // Generate fake GSC metrics and dummy URLs so the AI has context to process
         const mockGscData = keywords.map((kw, index) => ({
             query: kw,
             url: `https://yourwebsite.com/page-${index + 1}`,
@@ -337,7 +352,6 @@ app.post('/api/demo-analyze', async (req, res) => {
             impressions: Math.floor(Math.random() * 8000) + 500
         }));
 
-        // Send the generated spreadsheet to Gemini
         const clusters = await clusterKeywordsByIntent(mockGscData);
 
         res.json({

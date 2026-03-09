@@ -155,34 +155,31 @@
 
                 try {
                     const response = await fetch('/api/gsc/sites');
+                    const data = await response.json();
 
-                    // Security Bounce: If they aren't logged in, redirect to the landing page
-                    if (response.status === 401) {
-                        window.location.href = '/';
+                    // 🚨 BOUNCER CATCH
+                    if (response.status === 403 && data.redirectUrl) {
+                        alert("Your 7-day free trial has ended. Redirecting to secure checkout...");
+                        window.location.href = data.redirectUrl;
                         return;
                     }
 
-                    const result = await response.json();
+                    if (data.status === 'success') {
+                        siteDropdown.innerHTML = '';
 
-                    if (result.status === 'success') {
-                        siteDropdown.innerHTML = ''; // Clear loading text
-
-                        // Handle the Empty State gracefully
-                        if (!result.sites || result.sites.length === 0) {
+                        if (!data.sites || data.sites.length === 0) {
                             siteDropdown.innerHTML = '<option disabled>No connected sites found</option>';
                             return;
                         }
 
-                        // Populate the dropdown with real domains
-                        result.sites.forEach(site => {
+                        data.sites.forEach(site => {
                             const option = document.createElement('option');
                             option.value = site.siteUrl;
-                            // Make the URL pretty (remove https:// and trailing slashes)
                             option.textContent = site.siteUrl.replace(/^(https?:\/\/)/, '').replace(/\/$/, '');
                             siteDropdown.appendChild(option);
                         });
                     } else {
-                        throw new Error("Failed to load sites.");
+                        throw new Error(data.message || "Failed to load sites.");
                     }
                 } catch (error) {
                     console.error("Site fetch error:", error);
@@ -235,21 +232,27 @@
                 `;
 
                 try {
-                    // Grab the exact website the user selected in the header dropdown
                     const selectedSite = document.getElementById('gsc-sites-dropdown').value;
 
                     const response = await fetch('/api/analyze-intent', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ siteUrl: selectedSite }) // Send the site URL to the backend
+                        body: JSON.stringify({ siteUrl: selectedSite })
                     });
 
-                    const result = await response.json();
+                    const data = await response.json();
 
-                    if (result.status === 'success') {
+                    // 🚨 BOUNCER CATCH
+                    if (response.status === 403 && data.redirectUrl) {
+                        alert("Your 7-day free trial has ended. Redirecting to secure checkout...");
+                        window.location.href = data.redirectUrl;
+                        return;
+                    }
+
+                    if (data.status === 'success') {
                         tableBody.innerHTML = '';
 
-                        const clusters = result.data;
+                        const clusters = data.data;
                         if (!clusters || clusters.length === 0) {
                             tableBody.innerHTML = `<tr><td colspan="3" class="px-6 py-8 text-center text-slate-500">No cannibalization found!</td></tr>`;
                             return;
@@ -257,44 +260,44 @@
 
                         clusters.forEach((cluster) => {
                             const losingUrlsHtml = cluster.losing_urls.map(url => `
-                                <div class="flex items-center gap-2 mt-2">
-                                    <span class="w-2 h-2 rounded-full bg-rose-500"></span>
-                                    <a href="${url}" target="_blank" class="text-sm font-mono text-rose-700 hover:underline truncate max-w-[250px] inline-block" title="${url}">
-                                        ${url.replace('https://example.com', '')}
-                                    </a>
-                                    <span class="text-xs text-slate-400 ml-2">(Loser)</span>
-                                </div>
+                            <div class="flex items-center gap-2 mt-2">
+                                <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                                <a href="${url}" target="_blank" class="text-sm font-mono text-rose-700 hover:underline truncate max-w-[250px] inline-block" title="${url}">
+                                    ${url.replace('https://example.com', '')}
+                                </a>
+                                <span class="text-xs text-slate-400 ml-2">(Loser)</span>
+                            </div>
                             `).join('');
 
                             const rowHTML = `
-                                <tr class="transition-all duration-300 ease-in-out hover:bg-slate-50">
-                                    <td class="px-6 py-5 align-top">
-                                        <div class="text-sm font-bold text-slate-900">${cluster.intent_name}</div>
-                                        <div class="text-xs text-slate-500 mt-1">Total Search Vol: ${cluster.total_search_volume.toLocaleString()}</div>
-                                    </td>
-                                    <td class="px-6 py-5 align-top">
-                                        <div class="space-y-1">
-                                            <div class="flex items-center gap-2">
-                                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                                <a href="${cluster.winning_url}" target="_blank" class="text-sm font-mono text-emerald-700 hover:underline font-bold truncate max-w-[250px] inline-block" title="${cluster.winning_url}">
-                                                    ${cluster.winning_url.replace('https://example.com', '')}
-                                                </a>
-                                                <span class="text-xs text-emerald-600 font-medium ml-2 border border-emerald-200 bg-emerald-50 px-2 py-0.5 rounded-full">Canonical (Keep)</span>
-                                            </div>
-                                            ${losingUrlsHtml}
+                            <tr class="transition-all duration-300 ease-in-out hover:bg-slate-50">
+                                <td class="px-6 py-5 align-top">
+                                    <div class="text-sm font-bold text-slate-900">${cluster.intent_name}</div>
+                                    <div class="text-xs text-slate-500 mt-1">Total Search Vol: ${cluster.total_search_volume.toLocaleString()}</div>
+                                </td>
+                                <td class="px-6 py-5 align-top">
+                                    <div class="space-y-1">
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                            <a href="${cluster.winning_url}" target="_blank" class="text-sm font-mono text-emerald-700 hover:underline font-bold truncate max-w-[250px] inline-block" title="${cluster.winning_url}">
+                                                ${cluster.winning_url.replace('https://example.com', '')}
+                                            </a>
+                                            <span class="text-xs text-emerald-600 font-medium ml-2 border border-emerald-200 bg-emerald-50 px-2 py-0.5 rounded-full">Canonical (Keep)</span>
                                         </div>
-                                    </td>
-                                    <td class="px-6 py-5 align-top text-right">
-                                        <button class="resolve-btn whitespace-nowrap px-4 py-2 border border-transparent text-white text-sm font-medium rounded-lg bg-indigo-600 hover:bg-indigo-700 focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors shadow-sm w-full text-center">
-                                            ${cluster.recommended_action || 'Resolve via 301'}
-                                        </button>
-                                    </td>
-                                </tr>
+                                        ${losingUrlsHtml}
+                                    </div>
+                                </td>
+                                <td class="px-6 py-5 align-top text-right">
+                                    <button class="resolve-btn whitespace-nowrap px-4 py-2 border border-transparent text-white text-sm font-medium rounded-lg bg-indigo-600 hover:bg-indigo-700 focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors shadow-sm w-full text-center">
+                                        ${cluster.recommended_action || 'Resolve via 301'}
+                                    </button>
+                                </td>
+                            </tr>
                             `;
                             tableBody.insertAdjacentHTML('beforeend', rowHTML);
                         });
                     } else {
-                        throw new Error(result.message);
+                        throw new Error(data.message || "Failed to analyze data.");
                     }
 
                 } catch (error) {
