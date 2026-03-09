@@ -93,13 +93,22 @@ passport.use(new GoogleStrategy({
             });
 
             if (user) {
-                // If they exist, update their tokens
+                // 🚨 PATCH: Retroactively give old accounts a 7-day trial if they are missing one
+                let updatedTrialDate = user.trialEndsAt;
+                if (!user.trialEndsAt && !user.isPro) {
+                    updatedTrialDate = new Date();
+                    updatedTrialDate.setDate(updatedTrialDate.getDate() + 7);
+                    console.log(`⏳ Retroactively added 7-day trial for legacy user: ${user.email}`);
+                }
+
+                // If they exist, update their tokens and trial
                 user = await prisma.user.update({
                     where: { googleId: googleIdStr },
                     data: {
                         accessToken: accessToken || null,
                         ...(refreshToken ? { refreshToken: refreshToken } : {}),
                         displayName: nameStr,
+                        trialEndsAt: updatedTrialDate // Saves the patched timer!
                     }
                 });
                 console.log(`♻️ User updated in database: ${user.email}`);
